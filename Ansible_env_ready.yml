@@ -1,0 +1,106 @@
+---
+- name: Setup for the Ansible's Enviroment
+  hosts: localhost
+  # 빠른 실행을 필요로하는 인자들을 줄인다.
+  gather_facts: no
+  tasks:
+    - name: PasswordAuthentication chanage from no to yes
+      replace:
+        dest=/etc/ssh/sshd_config
+        regexp='PasswordAuthentication no'
+        replace='PasswordAuthentication yes'
+        backup=yes
+    - name: sshd restart to appply "PasswordAuthentication"
+      service:
+        name: sshd
+        state: restarted
+    - name: Add "/etc/hosts"
+      # 특정파일에 해당 구문을 block단위로 구분해서 수정하고 저장하겠다.
+      # blockinfile을 사용주 주의 사항은 : 뒤에 파이프(|)를 입력해야함.
+      blockinfile:
+        # IP를 이름으로 변경해 주는 파일
+        path: /etc/hosts
+        block: |
+          172.16.0.10 server
+          172.16.0.11 node01
+          172.16.0.12 node02
+          172.16.0.13 node03
+          172.16.0.14 node04
+          172.16.0.15 node05
+    - name: Add "/etc/ansible/hosts"
+      blockinfile:
+        path: /etc/ansible/hosts
+        # ansible_ssh_pass=vagrant 옵션을 주지 않으면 plaintext: auth method plaintext requires a password 에러 발생
+        block: |
+          [CentOS]
+          node01
+          node02
+
+          [Ubuntu]
+          node03
+          node04
+
+          [Win]
+          node05 ansible_connection=winrm ansible_ssh_user=vagrant ansible_ssh_port=5985 ansible_ssh_pass=vagrant
+    # pywinrm 설치를 위해 pip를 설치
+    - name: Install pip
+      yum:
+        name: python-pip
+        state: present
+    # 윈도우와 통신을 위한 pywinrm 설치
+    - name: Install pywinrm
+      pip:
+        name: pywinrm
+        state: present
+
+    - name: Install ssh-pass for Authentication
+      yum:
+        name: sshpass
+        state: present
+    - name: Install vim-enhanced
+      yum:
+        name: vim-enhanced
+        state: present
+    - name: Install git
+      yum:
+        name: git
+        state: present
+    - name: Download pathogen.vim
+      # /home/vagrant/.vim/autoload/pathogen.vim 이 경로에 https://tpo.pe/pathogen.vim 파일을 다운로드 한다.      
+      #shell: "curl -fLo /home/vagrant/.vim/autoload/pathogen.vim https://raw.githubusercontent.com/tpope/vim-pathogen/master/autoload/pathogen.vim"      
+      get_url:
+        url: https://raw.githubusercontent.com/tpope/vim-pathogen/master/autoload/pathogen.vim
+        dest: /home/vagrant/.vim/autoload/pathogen.vim
+        mode: 0644
+    - name: Git clone vim-ansible-yaml
+      git:
+        repo: 'https://github.com/chase/vim-ansible-yaml.git'
+        dest: /home/vagrant/.vim/bundle/vim-ansible-yaml    
+    # vim의 환경설정 변경
+    - name: Configure vimrc
+      # 라인을 추가한다.
+      lineinfile:
+        # 추가할 위치
+        dest: /home/vagrant/.vimrc
+        # 추가할 문구
+        line: "{{ item }}"
+      with_items:
+        # 줄번호를 보여주는 구문
+        - "set number"
+        # 다운로드한 pathogen을 적용하는 구문
+        - "execute pathogen#infect()"
+        # pathogen대해서 on 한다.
+        - "syntax on"
+    # bash의 환경설정 변경
+    - name: Configure Bashrc
+      # 라인을 추가한다.
+      lineinfile:
+        # 추가할 위치
+        dest: /home/vagrant/.bashrc
+        # 추가할 문구
+        line: "{{ item }}"
+      with_items:
+        # 단축키 등록
+        - "alias vi='vim'"
+        - "alias ans='ansible'"
+        - "alias anp='ansible-playbook'"

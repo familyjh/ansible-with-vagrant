@@ -1,0 +1,29 @@
+---
+- name: Setup for nfs server
+  hosts: localhost
+  gather_facts: no  
+
+  tasks:
+    # 공유디렉토리생성
+    - name: make nfs_shared directory
+      # 파일 및 디렉토리 생성
+      file:
+        path: /home/vagrant/nfs_shared
+        state: directory
+        mode: 0777
+
+    # 생성된 공유디렉토리 Export
+    - name: configure /etc/exports
+      # root권한이 필요
+      become: yes
+      lineinfile:
+        path: /etc/exports
+        line: /home/vagrant/nfs_shared/ 172.16.0.0/24(rw,sync)
+
+    # nfs 재시작
+    - name: nfs service restart
+      # root권한이 필요
+      become: yes
+      service:
+        name: nfs
+        state: restarted

@@ -1,0 +1,89 @@
+---
+- name: Setup for nfs server
+  hosts: localhost
+  gather_facts: no
+  tasks:
+    # 공유디렉토리생성
+    - name: make nfs_shared directory
+      # 파일 및 디렉토리 생성
+      file:
+        path: /home/vagrant/nfs_shared
+        state: directory
+        mode: 0777
+
+    # 생성된 공유디렉토리 Export
+    - name: configure /etc/exports
+      # root권한이 필요
+      become: yes
+      lineinfile:
+        path: /etc/exports
+        line: /home/vagrant/nfs_shared/ 172.16.0.0/24(rw,sync)
+
+    # nfs 재시작
+    - name: nfs service restart
+      # root권한이 필요
+      become: yes
+      service:
+        name: nfs
+        state: restarted
+
+- name: Setup for nfs clients  
+  hosts: CentOS:Ubuntu
+  gather_facts: no
+  tasks:
+    # 공유되어진 nfs 디렉토리를 mount하기 위한 디렉토리 생성
+    - name: make nfs_client directory
+      # 파일 및 디렉토리 생성
+      file:
+        path: /home/vagrant/nfs
+        state: directory
+
+    - name: mount point directory as client
+      # root권한이 필요
+      become: yes
+      # nfs server에 있는 공유디렉토리를 mount 한다.
+      mount:
+        name: /home/vagrant/nfs
+        src: 172.16.0.10:/home/vagrant/nfs_shared
+        fstype: nfs
+        opts: nfsvers=3        
+        state: mounted
+
+- name: Setup for nfs clients  
+  hosts: Win
+  gather_facts: no
+  tasks:
+    # NFC Client 활성화 시킴
+    - name: mount feature on
+      win_feature:
+        name: NFS-Client
+        state: present
+    # NFS공유 디렉토리 마운트
+    - name: mount nfs_shared
+      # 마운트는 일회성이라 영구적으로 사용하기 위해 net use를 사용하여 마운트를 진행한다.
+      win_command: net use "z:" "\\172.16.0.10/home/vagrant/nfs_shared"
+    # 시스템 재기동
+    - name: windows reboot
+      win_reboot:
+
+- name: Check mounting status for linux
+  hosts: CentOS:Ubuntu
+  gather_facts: no
+
+  tasks:
+    - name: Linux NFS Clients
+      shell: mount | grep nfs_shared
+      register: output
+    - debug: var=output.stdout_lines
+
+- name: Check mounting status for windows
+  hosts: Win
+  # debuger 사용
+  strategy: debug
+  gather_facts: no
+
+  tasks:
+    - name: Windows NFS clients
+      win_command: mount
+      register: output
+    - debug: var=output.stdout_lines

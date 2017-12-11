@@ -1,0 +1,66 @@
+---
+- name: Install nginx on CentOS
+  # CentOS는 Node01, Node02의 Group Name
+  hosts: CentOS
+  gather_facts: no
+  # Root권한을 획득하는 명령어
+  become: yes
+  tasks:
+    - name: install epel-release
+      yum: name=epel-release state=latest
+    - name: install nginx web server
+      yum: name=nginx state=present
+    - name: upload default index.html for web server
+      get_url: url=https://www.nginx.com dest=/usr/share/nginx/html/ mode=0644
+    - name: start nginx web server
+      service: name=nginx state=started
+
+- name: Install nginx on Ubuntu
+  # Ubuntu는 Node03, Node04의 Group Name
+  hosts: Ubuntu
+  gather_facts: no
+  # Root권한을 획득하는 명령어
+  become: yes
+  tasks:
+    # Ubuntu는 CentoOS와 달리 epel의 설치가 필요하지 않다.
+    - name: install nginx web server
+      apt: pkg=nginx state=present update_cache=yes
+    - name: upload default index.html for web server
+      get_url: url=https://www.nginx.com dest=/usr/share/nginx/html/ mode=0644 validate_certs=no
+
+- name: Install nginx on Windows
+  # CentOS는 Node01, Node02의 Group Name
+  hosts: Win
+  gather_facts: no
+  # Root권한을 획득하는 명령어
+  tasks:
+    - name: Download nginx    
+      # nginx download
+      win_get_url:
+        url: http://nginx.org/download/nginx-1.12.1.zip             
+        dest: C:\tmp\nginx-1.12.1.zip    
+    - name: Create dictory
+      # 다운로드 한 압축파일을 해제한 파일을 저장 할 디렉토리 생성
+      win_file:
+        path: C:\nginx
+        state: directory    
+    - name: Unzip nginx
+      # 압축해제
+      win_unzip:
+        src: C:\tmp\nginx-1.12.1.zip
+        dest: C:\nginx    
+    - name: Install nssm
+      # chocolatey를 이용해 nssm 을 설치함
+      win_chocolatey:
+        name: nssm    
+    - name: Download new index.html
+      # nigix 공식홈페이지를 다운로드하고 해당페이지를 nginx의 페이지로 변경한다.
+      win_get_url:
+        url: http://nginx.com
+        dest: C:\nginx\nginx-1.12.1\html\index.html    
+    - name: Restart nginx server
+      # nginx를 재시작한다.
+      win_nssm:
+        name: nginx
+        application: C:\nginx\nginx-1.12.1\nginx.exe
+        state: restarted

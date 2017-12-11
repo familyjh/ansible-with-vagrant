@@ -1,0 +1,23 @@
+---
+- name: Setup for nfs clients  
+  hosts: CentOS
+  gather_facts: no
+
+  tasks:
+    # 공유되어진 nfs 디렉토리를 mount하기 위한 디렉토리 생성
+    - name: make nfs_client directory
+      # 파일 및 디렉토리 생성
+      file:
+        path: /home/vagrant/nfs
+        state: directory
+
+    - name: mount point directory as client
+      # root권한이 필요
+      become: yes
+      # nfs server에 있는 공유디렉토리를 mount 한다.
+      mount:
+        name: /home/vagrant/nfs
+        src: 172.16.0.10:/home/vagrant/nfs_shared
+        fstype: nfs
+        opts: nfsvers=3        
+        state: mounted

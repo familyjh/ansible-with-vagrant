@@ -1,0 +1,15 @@
+---
+- name: Setup timezone
+  hosts: CentOS:Ubuntu
+  gather_facts: no
+  become: yes
+  tasks:
+    - name: Set timezone to Asia/Seoul
+      timezone: name=Asia/Seoul
+
+- name: Setup timezone
+  hosts: Win
+  gather_facts: no
+  tasks:
+    - name: Set timezone to 'Korea Standard Time (GMT+09:00)'
+      win_timezone: timezone='Korea Standard Time'
